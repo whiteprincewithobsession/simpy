@@ -1,4 +1,3 @@
-```markdown
 # simpy — Lightweight NumPy-like Library for Numerical Computations
 
 ## 📌 Overview
@@ -71,7 +70,7 @@ from simpy import simpy
 
 arr = simpy([[1, 2], [3, 4]])
 print(arr)
-```
+
 
 ---
 
