@@ -1,5 +1,3 @@
----
-
 ```markdown
 # simpy — Lightweight NumPy-like Library for Numerical Computations
 
