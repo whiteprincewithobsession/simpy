@@ -70,9 +70,10 @@ from simpy import simpy
 
 arr = simpy([[1, 2], [3, 4]])
 print(arr)
-
+```
 
 ---
+
 
 ## 🧾 Usage Examples
 
@@ -176,6 +177,3 @@ For questions or feedback, feel free to reach out:
 ---
 
 Thank you for your interest in **simpy**! 💙
-```
-
----
