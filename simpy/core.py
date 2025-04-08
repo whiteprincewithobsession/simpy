@@ -816,3 +816,119 @@ class simpy:
                 return [data]
         flattened_data = recursive_flatten(self.data)
         return simpy(flattened_data)
+
+    def sum(self) -> Union[int, float]:
+        """Return the sum of all elements in the array.
+    
+        Recursively traverses nested lists (arrays of arbitrary dimensions) 
+        and sums all numeric values. Non-list elements are treated as numbers.
+        
+        Returns:
+            Sum of all elements in the array. Return type depends on input:
+            - int if all elements are integers
+            - float if any element is float or mixed types are present
+            
+        Examples:
+            Flat array:
+            >>> a = simpy([1, 2, 3])
+            >>> a.sum()
+            6
+            
+            Nested arrays:
+            >>> b = simpy([[1, 2], [3, [4, 5]]])
+            >>> b.sum()
+            15
+            
+            Mixed types:
+            >>> c = simpy([1.5, [2, 3]])
+            >>> c.sum()
+            6.5
+        
+        Notes:
+            - For empty arrays, returns 0
+            - Raises TypeError if non-numeric elements are encountered
+            - Raises ValueError if array is empty
+        """
+        total = 0
+        flag = False
+        def recursive_check(data):
+            nonlocal flag
+            if isinstance(data, Union[float, int]):
+                flag = True
+                return
+            else:
+                for item in data:
+                    recursive_check(item)
+                    
+        if not flag:
+            raise ValueError("Empty array. The sum can not be realized.")
+
+        def recursive_sum(data):
+            nonlocal total
+            if isinstance(data, list):
+                for item in data:
+                    recursive_sum(item)
+            else:
+                total += data
+        recursive_sum(self.data)
+        return total
+    
+    def prod(self) -> Union[int, float]:
+        """Return the product of all elements in the array.
+    
+        Recursively traverses nested lists (arrays of arbitrary dimensions)
+        and computes the product of all numeric values. Non-list elements
+        are treated as numbers.
+        
+        Returns:
+            Product of all elements in the array. Return type depends on input:
+            - int if all elements are integers
+            - float if any element is float or mixed types are present
+            
+        Examples:
+            Flat array:
+            >>> a = simpy([2, 3, 4])
+            >>> a.prod()
+            24
+            
+            Nested arrays:
+            >>> b = simpy([[2, 3], [4, [5, 2]]])
+            >>> b.prod()
+            240
+            
+            Mixed types:
+            >>> c = simpy([2.5, [2, 3]])
+            >>> c.prod()
+            15.0
+            
+        Notes:
+            - For empty arrays, returns 1 (multiplicative identity)
+            - Raises TypeError if non-numeric elements are encountered
+            - Raises ValueError if array is empty
+            - Special cases:
+                - Any zero element will make the product zero
+                - Handles negative numbers correctly
+        """
+        total = 1
+        flag = False
+        def recursive_check(data):
+            nonlocal flag
+            if isinstance(data, Union[float, int]):
+                flag = True
+                return
+            else:
+                for item in data:
+                    recursive_check(item)
+
+        if not flag:
+            raise ValueError("Empty array. The sum can not be realized.")
+
+        def recursive_prod(data):
+            nonlocal total
+            if isinstance(data, list):
+                for item in data:
+                    recursive_prod(item)
+            else:
+                total *= data
+        recursive_prod(self.data)
+        return total
