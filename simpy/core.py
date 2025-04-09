@@ -849,29 +849,29 @@ class simpy:
             - Raises TypeError if non-numeric elements are encountered
             - Raises ValueError if array is empty
         """
+        if not self.data:
+            raise ValueError("Cannot compute sum of empty array")
+    
         total = 0
-        flag = False
-        def recursive_check(data):
-            nonlocal flag
-            if isinstance(data, Union[float, int]):
-                flag = True
-                return
-            else:
-                for item in data:
-                    recursive_check(item)
-                    
-        if not flag:
-            raise ValueError("Empty array. The sum can not be realized.")
-
+        has_float = False
+        
         def recursive_sum(data):
-            nonlocal total
+            nonlocal total, has_float
             if isinstance(data, list):
                 for item in data:
                     recursive_sum(item)
             else:
+                if not isinstance(data, (int, float)):
+                    raise TypeError(f"Non-numeric element found: {data}")
+                if isinstance(data, float):
+                    has_float = True
                 total += data
-        recursive_sum(self.data)
-        return total
+        
+        try:
+            recursive_sum(self.data)
+            return float(total) if has_float else int(total)
+        except TypeError as e:
+            raise TypeError(f"Array contains non-numeric elements: {e}")
     
     def prod(self) -> Union[int, float]:
         """Return the product of all elements in the array.
@@ -932,3 +932,405 @@ class simpy:
                 total *= data
         recursive_prod(self.data)
         return total
+    
+    def diagonal(self) -> 'simpy':
+        """Return the diagonal elements of a 2D array.
+    
+        Extracts the elements where the row and column indices are equal.
+        Only works for 2D arrays (matrices).
+        
+        Returns:
+            simpy: 1D array containing the diagonal elements
+            
+        Raises:
+            ValueError: If the array is not 2D
+            
+        Examples:
+            >>> a = simpy([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+            >>> a.diagonal()
+            simpy([1, 5, 9], shape=[3], dtype=int, ndim=1)
+            
+            >>> b = simpy([[1, 2], [3, 4]])
+            >>> b.diagonal()
+            simpy([1, 4], shape=[2], dtype=int, ndim=1)
+        """
+        if self.ndim != 2:
+            raise ValueError("diagonal() requires 2D array.")
+        
+        n_rows = len(self.data)
+        n_col = len(self.data[0]) if n_rows > 0 else 0
+        min_dim = min(n_rows, n_col)
+
+        diag_el = [self.data[i][i] for i in range(min_dim)]
+        return simpy(diag_el, dtype=self.dtype)
+    
+    def mean(self, axis: Optional[int] = None) -> Union[float, 'simpy']:
+        """Compute the arithmetic mean along the specified axis.
+    
+        Args:
+            axis: Axis along which to compute the mean.
+                None (default): compute mean of all elements (flattened array)
+                0: compute mean along columns (for 2D arrays)
+                1: compute mean along rows (for 2D arrays)
+                
+        Returns:
+            If axis is None: scalar mean value (float)
+            If axis is specified: simpy array with reduced dimensions
+            
+        Raises:
+            ValueError: If axis is invalid or array is empty
+            TypeError: If array contains non-numeric elements
+            
+        Examples:
+            1D array:
+            >>> a = simpy([1, 2, 3, 4])
+            >>> a.mean()
+            2.5
+            
+            2D array (global mean):
+            >>> b = simpy([[1, 2], [3, 4]])
+            >>> b.mean()
+            2.5
+            
+            2D array (column means):
+            >>> b.mean(axis=0)
+            simpy([2.0, 3.0], shape=[2], dtype=float, ndim=1)
+            
+            2D array (row means):
+            >>> b.mean(axis=1)
+            simpy([1.5, 3.5], shape=[2], dtype=float, ndim=1)
+        """
+        if self.size == 0:
+            raise ValueError("Can't compute mean of empty array.")
+        
+        if axis is None:
+            total = self.sum()
+            return total / self.size
+
+        if axis < 0 or axis >= self.ndim:
+            raise ValueError(f"axis {axis} is out of bounds for array with {self.ndim} dimensions.")
+        
+        if self.ndim == 1:
+            if axis == 0:
+                return simpy([self.sum() / self.size], dtype='float')
+            raise ValueError(f'axis {axis} is invalid for 1D array.')
+        
+        if axis == 0:
+            means = []
+            n_rows = self.shape[0]
+            for col in range(self.shape[1]):
+                col_sum = sum(row[col] for row in self.data)
+                means.append(col_sum / n_rows)
+            return simpy(means, dtype='float')
+        
+        elif axis == 1:
+            means = []
+            n_cols = self.shape[1]
+            for row in self.data:
+                row_sum = sum(row)
+                means.append(row_sum / n_cols)
+            return simpy(means, dtype='float')
+        raise ValueError(f'axis {axis} is invalid for 2D array')
+    
+    def std(self, axis: Optional[int] = None, ddof: int = 0) -> Union[float, 'simpy']:
+        """Compute the standard deviation along the specified axis.
+    
+        Args:
+            axis: Axis along which to compute the std.
+                None (default): compute std of all elements (flattened array)
+                0: compute std along columns (for 2D arrays)
+                1: compute std along rows (for 2D arrays)
+            ddof: Delta degrees of freedom. The divisor used is N - ddof, 
+                where N represents the number of elements.
+                
+        Returns:
+            If axis is None: scalar std value (float)
+            If axis is specified: simpy array with reduced dimensions
+            
+        Raises:
+            ValueError: If axis is invalid or array is empty
+            TypeError: If array contains non-numeric elements
+            
+        Examples:
+            1D array:
+            >>> a = simpy([1, 2, 3, 4])
+            >>> a.std()
+            1.118033988749895
+            
+            2D array (global std):
+            >>> b = simpy([[1, 2], [3, 4]])
+            >>> b.std()
+            1.118033988749895
+            
+            2D array (column std):
+            >>> b.std(axis=0)
+            simpy([1.0, 1.0], shape=[2], dtype=float, ndim=1)
+            
+            2D array (row std):
+            >>> b.std(axis=1)
+            simpy([0.5, 0.5], shape=[2], dtype=float, ndim=1)
+        """
+
+        if self.size == 0:
+            raise ValueError("Can't compute mean of empty array.")
+        
+        means = self.mean(axis=axis) if axis is not None else self.mean()
+        if axis is None:
+            square_diff = [(x - means)**2 for x in self.flatten().data]
+            sum_sq = sum(square_diff)
+            div = self.size - ddof
+            return (sum_sq / div)**0.5
+        
+        if axis < 0 or axis >= self.ndim:
+            raise ValueError(f"axis {axis} is out of bounds for array with {self.ndim} dimensions.")
+        
+        if self.ndim == 1:
+            if axis == 0:
+                squared_diff = [(x - means.data[0])**2 for x in self.data]
+                sum_sq = sum(squared_diff)
+                divisor = self.size - ddof
+                std_val = (sum_sq / divisor)**0.5
+                return simpy([std_val], dtype='float')
+            raise ValueError(f'axis {axis} is invalid for 1D array.')
+    
+        if axis == 0:
+            stds = []
+            n_rows = self.shape[0]
+            for col in range(self.shape[1]):
+                squared_diff = [(row[col] - means.data[col])**2 for row in self.data]
+                sum_sq = sum(squared_diff)
+                divisor = n_rows - ddof
+                stds.append((sum_sq / divisor)**0.5)
+            return simpy(stds, dtype='float')
+        
+        elif axis == 1:
+            stds = []
+            n_cols = self.shape[1]
+            for i, row in enumerate(self.data):
+                squared_diff = [(x - means.data[i])**2 for x in row]
+                sum_sq = sum(squared_diff)
+                divisor = n_cols - ddof
+                stds.append((sum_sq / divisor)**0.5)
+            return simpy(stds, dtype='float')
+        
+        raise ValueError(f'axis {axis} is invalid for 2D array')
+        
+    def median(self, axis: Optional[int] = None) -> Union[float, 'simpy']:
+        """Compute the median along the specified axis.
+    
+        Args:
+            axis: Axis along which to compute the median.
+                None (default): compute median of all elements (flattened array)
+                0: compute median along columns (for 2D arrays)
+                1: compute median along rows (for 2D arrays)
+                
+        Returns:
+            If axis is None: scalar median value (float)
+            If axis is specified: simpy array with reduced dimensions
+            
+        Raises:
+            ValueError: If axis is invalid or array is empty
+            
+        Examples:
+            1D array:
+            >>> a = simpy([1, 3, 2, 4])
+            >>> a.median()
+            2.5
+            
+            2D array (global median):
+            >>> b = simpy([[1, 3], [2, 4]])
+            >>> b.median()
+            2.5
+            
+            2D array (column medians):
+            >>> b.median(axis=0)
+            simpy([1.5, 3.5], shape=[2], dtype=float, ndim=1)
+            
+            2D array (row medians):
+            >>> b.median(axis=1)
+            simpy([2.0, 3.0], shape=[2], dtype=float, ndim=1)
+        """
+        if self.size == 0:
+            raise ValueError("Can't compute median of empty array.")
+
+        def compute_median(data):
+            sorted_data = sorted(data)
+            n = len(sorted_data)
+            if n % 2 == 1:
+                return float(sorted_data[n//2])
+            else:
+                return (sorted_data[n//2 - 1] + sorted_data[n//2]) / 2.0
+        
+        if axis is None:
+            flatten_data = self.flatten().data
+            return compute_median(flatten_data)
+        
+        if axis < 0 or axis >= self.ndim:
+            raise ValueError(f"axis {axis} is out of bounds for array with {self.ndim} dimensions.")
+        
+        if self.ndim == 1:
+            if axis == 0:
+                return simpy([compute_median(self.data)], dtype='float')
+            raise ValueError(f'axis {axis} is invalid for 1D array.')
+        
+        if axis == 0:
+            medians = []
+            for col in range(self.shape[1]):
+                column_data = [row[col] for row in self.data]
+                medians.append(compute_median(column_data))
+            return simpy(medians, dtype='float')
+        
+        elif axis == 1:
+            medians = []
+            for row in self.data:
+                medians.append(compute_median(row))
+            return simpy(medians, dtype='float')
+        
+        raise ValueError(f'axis {axis} is ivalid for 2D array')
+        
+    def cov(self, rowvar: bool = True, ddof: Optional[int] = None) -> 'simpy':
+        """Estimate the covariance matrix.
+        
+        Args:
+            rowvar: If True (default), each row represents a variable, with 
+                observations in the columns. If False, relationship is transposed.
+            ddof: Delta degrees of freedom. The divisor used is N - ddof, where N
+                represents the number of observations. If None, defaults to 1 for
+                sample covariance (like numpy).
+                
+        Returns:
+            simpy: The covariance matrix
+            
+        Examples:
+            >>> x = simpy([[0, 2], [1, 1], [2, 0]]).T
+            >>> x.cov()
+            simpy([[ 1., -1.],
+                [-1.,  1.]], shape=[2, 2], dtype=float, ndim=2)
+        """
+        if self.size == 0:
+            raise ValueError("Can't compute covariance of empty array.")
+        
+        if ddof is None:
+            ddof = 1
+        
+        if self.ndim == 1:
+            data = [self.data]
+        else:
+            data = self.data if rowvar else [list(row) for row in zip(*self.data)]
+        
+        n_vars = len(data)
+        n_obs = len(data[0]) if n_vars > 0 else 0
+        
+        means = [sum(col)/n_obs for col in data]
+        
+        cov_matrix = []
+        for i in range(n_vars):
+            row = []
+            for j in range(n_vars):
+                covariance = sum((data[i][k] - means[i]) * (data[j][k] - means[j]) 
+                            for k in range(n_obs)) / (n_obs - ddof)
+                row.append(covariance)
+            cov_matrix.append(row)
+        
+        return simpy(cov_matrix, dtype='float')
+
+    def corrcoef(self, rowvar: bool = True) -> 'simpy':
+        """Return the Pearson correlation coefficients.
+        
+        Args:
+            rowvar: If True (default), each row represents a variable, with 
+                observations in the columns. If False, relationship is transposed.
+                
+        Returns:
+            simpy: The correlation matrix
+            
+        Examples:
+            >>> x = simpy([[0, 1, 2], [2, 1, 0]])
+            >>> x.corrcoef()
+            simpy([[ 1., -1.],
+                [-1.,  1.]], shape=[2, 2], dtype=float, ndim=2)
+        """
+        if self.size == 0:
+            raise ValueError("Can't compute correlation of empty array.")
+        
+        # First compute covariance matrix
+        cov_matrix = self.cov(rowvar=rowvar, ddof=0).data
+        
+        n = len(cov_matrix)
+        corr_matrix = []
+        
+        # Convert covariance to correlation
+        for i in range(n):
+            row = []
+            for j in range(n):
+                std_i = cov_matrix[i][i]**0.5
+                std_j = cov_matrix[j][j]**0.5
+                if std_i == 0 or std_j == 0:
+                    # Handle case of zero variance
+                    correlation = float('nan')
+                else:
+                    correlation = cov_matrix[i][j] / (std_i * std_j)
+                row.append(correlation)
+            corr_matrix.append(row)
+        
+        return simpy(corr_matrix, dtype='float')
+    
+    def __matmul__(self, other: 'simpy') -> 'simpy':
+        """Matrix multiplication using @ operator.
+        
+        Args:
+            other: Another simpy array to multiply with
+            
+        Returns:
+            Result of matrix multiplication as new simpy array
+            
+        Raises:
+            ValueError: If matrix dimensions are incompatible
+            TypeError: If other is not a simpy array
+            
+        Examples:
+            Matrix multiplication:
+            >>> A = simpy([[1, 2], [3, 4]])
+            >>> B = simpy([[5, 6], [7, 8]])
+            >>> A @ B
+            simpy([[19, 22], [43, 50]], shape=[2, 2], dtype=int, ndim=2)
+            
+            Matrix-vector multiplication:
+            >>> M = simpy([[1, 2], [3, 4]])
+            >>> v = simpy([5, 6])
+            >>> M @ v
+            simpy([17, 39], shape=[2], dtype=int, ndim=1)
+        """
+        if not isinstance(other, simpy):
+            raise TypeError("Matrix multiplication requires simpy arrays")
+        
+        left = self.data
+        right = other.data
+        
+        left_shape = self.shape if self.ndim == 2 else (1, len(self.data))
+        right_shape = other.shape if other.ndim == 2 else (len(other.data), 1)
+        
+        if left_shape[1] != right_shape[0]:
+            raise ValueError(
+                f"Shapes {left_shape} and {right_shape} not aligned for matrix multiplication"
+            )
+        
+        result = []
+        for i in range(left_shape[0]):
+            row = []
+            for j in range(right_shape[1]):
+                total = 0
+                for k in range(left_shape[1]):
+                    left_val = left[i][k] if self.ndim == 2 else left[k]
+                    right_val = right[k][j] if other.ndim == 2 else right[k]
+                    total += left_val * right_val
+                row.append(total)
+            result.append(row)
+        
+        if self.ndim == 1 and other.ndim == 1: 
+            return simpy(result[0][0])
+        elif self.ndim == 1: 
+            return simpy(result[0])
+        elif other.ndim == 1: 
+            return simpy([row[0] for row in result])
+        return simpy(result)
