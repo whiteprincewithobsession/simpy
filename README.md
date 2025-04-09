@@ -42,6 +42,7 @@ The goal of this project is to understand how numpy works and all its related me
 
 - **Element-wise Arithmetic**: Addition (`+`), subtraction (`-`), multiplication (`*`), division (`/`), and comparison operators (`==`, `!=`, `<`, `<=`, `>`, `>=`) with broadcasting support.
 - **Indexing and Slicing**: Access elements using integer indices, slices, or tuples.
+- **Matrix multiplication**: Using matmul operator (@) you can do multiplication of 2 matrices. 
 
 ---
 
@@ -51,6 +52,17 @@ The goal of this project is to understand how numpy works and all its related me
 - `max(axis=None)` — Compute the maximum value along a specified axis or globally.
 - `flatten()` — Flatten the array into a 1D array.
 - `fill(value)` — Fill the array with a scalar value.
+
+---
+### 📊 Statistical & Mathematical Methods
+- `sum()` — Compute the sum of array elements.
+- `prod()` — Compute the product of array elements.
+- `diagonal()` — Extract the diagonal elements of 2D array.
+- `mean(axis=None)` — Compute the arithmetic mean along the specified axis.
+- `std(axis=None, ddof=0)` — Compute the standard deviation along the specified axis.
+- `cov(rowvar=True, ddof=None)` — Compute the covariance matrix.
+- `corrcoef(rowvar=True)` — Compute Pearson correlation coefficients.
+- `median(axis=None)` — Compute the median along the specified axis
 
 ---
 
@@ -144,6 +156,41 @@ print(arr.min(axis=0))
 print(arr.flatten())
 ```
 
+---
+
+### 🔸 Array Methods
+
+```python
+arr = simpy([[1, 2, 3], [4, 5, 6]])
+
+# Sum of all elements
+print(arr.sum())  # Output: 21
+
+# Product along axis 1
+print(arr.prod(axis=1))  # Output: [6, 120]
+
+# Extract diagonal elements
+print(arr.diagonal())  # Output: [1, 5]
+
+# Compute mean
+print(arr.mean())  # Output: 3.5
+print(arr.mean(axis=0))  # Output: [2.5, 3.5, 4.5]
+
+# Standard deviation
+print(arr.std())  # Output: 1.707...
+
+# Matrix multiplication
+a = simpy([[1, 2], [3, 4]])
+b = simpy([[5, 6], [7, 8]])
+print(a @ b)  # Output: [[19, 22], [43, 50]]
+
+# Median
+print(arr.median())  # Output: 3.5
+
+# Correlation coefficients
+corr = arr.corrcoef()
+print(corr)  # Output: correlation matrix
+```
 ---
 
 ## 🚧 Project Status
