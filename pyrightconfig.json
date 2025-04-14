@@ -1,0 +1,12 @@
+{
+    "include": ["simpy"],
+    "exclude": [
+        "**/__pycache__",
+        "**/*.egg-info",
+        "**/tests"
+    ],
+    "typeCheckingMode": "basic",
+    "pythonVersion": "3.10",
+    "reportMissingImports": true,
+    "reportUnusedFunction": "warning"
+}

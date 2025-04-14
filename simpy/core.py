@@ -2,6 +2,7 @@ from typing import List, Tuple, Union, Callable, Any, Optional
 from math import prod, ceil
 import random
 
+
 class simpy:
     """A simple numpy.array implementation for numerical computations.
     
@@ -13,7 +14,7 @@ class simpy:
         size: The number of elements in the array (production of shape)
     """
     
-    def __init__(self, data: List, dtype: str = None, display_decimals: int = 6) -> None:
+    def __init__(self, data: List, dtype: Optional[str] = None, display_decimals: int = 6) -> None:
         """Initialize a new simpy array.
         
         Args:
@@ -62,7 +63,7 @@ class simpy:
             curr = curr[0] if len(curr) > 0 else None
         return shape
     
-    def _convert_data(self, data: List, dtype: str) -> List:
+    def _convert_data(self, data: List, dtype: Optional[str] = None) -> List:
         """Convert array elements to specified data type.
         
         Args:
@@ -90,6 +91,7 @@ class simpy:
                 return float(item)
             elif dtype == "bool":
                 return bool(item)
+            raise TypeError(f"{item} has incompatible format.")
             
         return recursive_convert(data)
     
@@ -141,21 +143,21 @@ class simpy:
         """
         def format_value(value):
             if isinstance(value, float):
-                return f"{value:.1f}"  # Format floats to one decimal place
+                return f"{value:.1f}"
             return str(value)
 
         def format_array(data, indent=0):
             if isinstance(data, list):
-                if not data:  # Empty list
+                if not data: 
                     return "[]"
-                if isinstance(data[0], list):  # Multi-dimensional array
+                if isinstance(data[0], list):
                     prefix = " " * indent
                     lines = [f"{prefix}[{format_array(sub, indent + 1)}]" for sub in data]
                     return "\n" + "\n".join(lines)
-                else:  # 1D array
+                else:
                     elements = " ".join(format_value(x) for x in data)
                     return f"[{elements}]"
-            else:  # Scalar value
+            else: 
                 return format_value(data)
 
         formatted_data = format_array(self.data)
@@ -799,7 +801,6 @@ class simpy:
                     return [element]
             else:
                 squeezed = [self._squeeze(sub) for sub in data]
-                # Check if all elements are non-list (scalars)
                 if all(not isinstance(sub, list) for sub in squeezed):
                     return squeezed
                 else:
@@ -1253,20 +1254,17 @@ class simpy:
         if self.size == 0:
             raise ValueError("Can't compute correlation of empty array.")
         
-        # First compute covariance matrix
         cov_matrix = self.cov(rowvar=rowvar, ddof=0).data
         
         n = len(cov_matrix)
         corr_matrix = []
         
-        # Convert covariance to correlation
         for i in range(n):
             row = []
             for j in range(n):
                 std_i = cov_matrix[i][i]**0.5
                 std_j = cov_matrix[j][j]**0.5
                 if std_i == 0 or std_j == 0:
-                    # Handle case of zero variance
                     correlation = float('nan')
                 else:
                     correlation = cov_matrix[i][j] / (std_i * std_j)
@@ -1548,7 +1546,50 @@ class simpy:
             if i not in sec_elements:
                 res.append(i)
         return res
-
-
-
+    
+    def transpose(self) -> 'simpy':
+        """Transpose the array by reversing its dimensions.
         
+        For a 2D array, this swaps rows and columns. For 1D arrays, returns 
+        a view of the same array (no change). Higher dimensional arrays 
+        reverse the order of axes.
+        
+        Returns:
+            A new `simpy` array with axes reversed. For 2D arrays, this means
+            the first axis (rows) becomes the second axis (columns), and vice versa.
+            
+        Raises:
+            ValueError: If the array is empty
+            
+        Examples:
+            1D array (unchanged):
+            >>> a = simpy([1, 2, 3])
+            >>> a.transpose()
+            simpy([1, 2, 3], shape=[3], dtype=int, ndim=1)
+            
+            2D array:
+            >>> b = simpy([[1, 2], [3, 4], [5, 6]])
+            >>> b.transpose()
+            simpy([[1, 3, 5], 
+                [2, 4, 6]], shape=[2, 3], dtype=int, ndim=2)
+                
+            3D array (axes reversed):
+            >>> c = simpy([[[1, 2], [3, 4]], [[[5, 6], [7, 8]]])
+            >>> c.transpose()
+            simpy([[[1, 5], [3, 7]], 
+                [[2, 6], [4, 8]]], shape=[2, 2, 2], dtype=int, ndim=3)
+        """
+        if self.size == 0:
+            raise ValueError("Can't transpose an empty array")
+        
+        if self.ndim == 1:
+            return simpy(self.data.copy())
+        
+        def recursive_transpose(data, depth=0):
+            if depth == self.ndim - 1:
+                return data
+            transposed = list(zip(*data))
+            return [recursive_transpose(list(item), depth+1) for item in transposed]
+        
+        transposed_data = recursive_transpose(self.data)
+        return simpy(transposed_data, dtype=self.dtype)
