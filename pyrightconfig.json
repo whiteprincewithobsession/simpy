@@ -6,7 +6,7 @@
         "**/tests"
     ],
     "typeCheckingMode": "basic",
-    "pythonVersion": "3.10",
+    "pythonVersion": "3.13",
     "reportMissingImports": true,
     "reportUnusedFunction": "warning"
 }
