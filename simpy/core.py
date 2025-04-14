@@ -1505,6 +1505,20 @@ class simpy:
                 raise ValueError("For 2D array, axis must be 0, 1, or None.")
 
         else:
-            raise NotImplementedError("argmax() is only implemented for 1D and 2D arrays.")    
+            raise NotImplementedError("argmax() is only implemented for 1D and 2D arrays.")  
+
+    def setdiff1d(self, other: 'simpy'):
+        if not isinstance(other, simpy):
+            raise TypeError("Passed argument is not an instance of simpy class") 
+        
+        fst_elements = set(self.flatten().data)
+        sec_elements = set(other.flatten().data)
+        res = []
+        for i in fst_elements:
+            if i not in sec_elements:
+                res.append(i)
+        return res
+
+    
 
         
