@@ -1334,3 +1334,177 @@ class simpy:
         elif other.ndim == 1: 
             return simpy([row[0] for row in result])
         return simpy(result)
+    
+    def argmin(self, axis: int = None) -> Union[int, 'simpy']:
+        """Returns the indices of the minimum values along an axis.
+    
+        Args:
+            axis: Axis along which to operate. If None (default), the index is 
+                returned for the flattened array. For 1D arrays, only axis=0 
+                is valid. For 2D arrays, axis=0 finds minima across rows, 
+                and axis=1 across columns.
+        
+        Returns:
+            - If `axis=None`: Single index (int) of the minimum in the flattened array.
+            - If `axis=0` or `axis=1`: `simpy` array of indices along the specified axis.
+        
+        Raises:
+            ValueError: If the array is empty or `axis` is invalid.
+            NotImplementedError: If called on arrays with ndim > 2.
+        
+        Examples:
+            >>> a = simpy([3, 1, 4, 1])
+            >>> a.argmin()
+            1  # Index of the first occurrence of the minimum value (1)
+
+            >>> b = simpy([[3, 1, 4], [2, 0, 5]])
+            >>> b.argmin(axis=0)
+            simpy([1, 1, 0], dtype=int)  # Indices of minima for each column
+            >>> b.argmin(axis=1)
+            simpy([1, 1], dtype=int)     # Indices of minima for each row
+        """        
+        if self.size == 0:
+            raise ValueError("Can't find smallest element in empty array.")
+
+        if axis is None:
+            res = self.flatten()
+            min_el = res.data[0]
+            index = 0
+            for i, j in enumerate(res.data):
+                if res.data[i] < min_el:
+                    min_el = res.data[i]
+                    index = i
+            return index
+
+        if axis < 0 or axis >= self.ndim:
+            raise ValueError(f"axis {axis} is out of bounds for array with {self.ndim} dimensions.")
+        
+        if self.ndim == 1:
+            if axis != 0:
+                raise ValueError("For 1D array, axis can only be 0 or None.")
+            min_el = self.data[0]
+            index = 0
+            for i, val in enumerate(self.data):
+                if val < min_el:
+                    min_el = val
+                    index = i
+            return index
+
+        elif self.ndim == 2:
+            if axis == 0:  
+                min_indices = []
+                for col in range(self.shape[1]):
+                    min_val = self.data[0][col]
+                    min_row = 0
+                    for row in range(1, self.shape[0]):
+                        if self.data[row][col] < min_val:
+                            min_val = self.data[row][col]
+                            min_row = row
+                    min_indices.append(min_row)
+                return simpy(min_indices, dtype='int')  
+            
+            elif axis == 1:  
+                min_indices = []
+                for row in range(self.shape[0]):
+                    min_val = self.data[row][0]
+                    min_col = 0
+                    for col in range(1, self.shape[1]):
+                        if self.data[row][col] < min_val:
+                            min_val = self.data[row][col]
+                            min_col = col
+                    min_indices.append(min_col)
+                return simpy(min_indices, dtype='int')
+
+            else:
+                raise ValueError("For 2D array, axis must be 0, 1, or None.")
+
+        else:
+            raise NotImplementedError("argmin() is only implemented for 1D and 2D arrays.")
+        
+    def argmax(self, axis: int = None) -> Union[int, 'simpy']:
+        """Returns the indices of the maximum values along an axis.
+    
+        Args:
+            axis: Axis along which to operate. If None (default), the index is 
+                returned for the flattened array. For 1D arrays, only axis=0 
+                is valid. For 2D arrays, axis=0 finds maxima across rows, 
+                and axis=1 across columns.
+        
+        Returns:
+            - If `axis=None`: Single index (int) of the maximum in the flattened array.
+            - If `axis=0` or `axis=1`: `simpy` array of indices along the specified axis.
+        
+        Raises:
+            ValueError: If the array is empty or `axis` is invalid.
+            NotImplementedError: If called on arrays with ndim > 2.
+        
+        Examples:
+            >>> a = simpy([3, 1, 4, 1])
+            >>> a.argmax()
+            2  # Index of the maximum value (4)
+
+            >>> b = simpy([[3, 1, 4], [2, 5, 0]])
+            >>> b.argmax(axis=0)
+            simpy([0, 1, 0], dtype=int)  # Indices of maxima for each column
+            >>> b.argmax(axis=1)
+            simpy([2, 1], dtype=int)     # Indices of maxima for each row
+        """        
+        if self.size == 0:
+            raise ValueError("Can't find maximal element in empty array.")
+
+        if axis is None:
+            res = self.flatten()
+            max_el = res.data[0]
+            index = 0
+            for i, j in enumerate(res.data):
+                if res.data[i] > max_el:
+                    max_el = res.data[i]
+                    index = i
+            return index
+
+        if axis < 0 or axis >= self.ndim:
+            raise ValueError(f"axis {axis} is out of bounds for array with {self.ndim} dimensions.")
+        
+        if self.ndim == 1:
+            if axis != 0:
+                raise ValueError("For 1D array, axis can only be 0 or None.")
+            max_el = self.data[0]
+            index = 0
+            for i, val in enumerate(self.data):
+                if val > max_el:
+                    max_el = val
+                    index = i
+            return index
+
+        elif self.ndim == 2:
+            if axis == 0:  
+                max_indices = []
+                for col in range(self.shape[1]):
+                    max_val = self.data[0][col]
+                    max_row = 0
+                    for row in range(1, self.shape[0]):
+                        if self.data[row][col] > max_val:
+                            max_val = self.data[row][col]
+                            max_row = row
+                    max_indices.append(max_row)
+                return simpy(max_indices, dtype='int')  
+            
+            elif axis == 1:  
+                max_indices = []
+                for row in range(self.shape[0]):
+                    max_val = self.data[row][0]
+                    max_col = 0
+                    for col in range(1, self.shape[1]):
+                        if self.data[row][col] > max_val:
+                            max_val = self.data[row][col]
+                            max_col = col
+                    max_indices.append(max_col)
+                return simpy(max_indices, dtype='int')
+
+            else:
+                raise ValueError("For 2D array, axis must be 0, 1, or None.")
+
+        else:
+            raise NotImplementedError("argmax() is only implemented for 1D and 2D arrays.")    
+
+        
