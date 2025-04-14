@@ -1507,7 +1507,37 @@ class simpy:
         else:
             raise NotImplementedError("argmax() is only implemented for 1D and 2D arrays.")  
 
-    def setdiff1d(self, other: 'simpy'):
+    def setdiff1d(self, other: 'simpy') -> 'simpy':
+        """Compute the set difference between two arrays (elements in `self` not in `other`).
+
+        Returns the unique values in `self` that are not present in `other`. 
+        The result is sorted in ascending order (unlike Python's set difference).
+        Input arrays are flattened before computation.
+
+        Args:
+            other: Array to compare against. Must be an instance of `simpy`.
+
+        Returns:
+            A new `simpy` array containing the sorted unique values present in `self` 
+            but not in `other`. The output is always 1-dimensional.
+
+        Raises:
+            TypeError: If `other` is not a `simpy` array.
+
+        Examples:
+            >>> a = simpy([1, 2, 3, 2, 4])
+            >>> b = simpy([3, 5, 6])
+            >>> a.setdiff1d(b)
+            simpy([1, 2, 4])  # Unique elements in 'a' not in 'b'
+
+            >>> c = simpy([[1, 2], [3, 4]])
+            >>> d = simpy([3, 5])
+            >>> c.setdiff1d(d)
+            simpy([1, 2, 4])  # Flattened 'c' minus elements from 'd'
+
+        Note:
+            1. The operation is not symmetric: `a.setdiff1d(b) != b.setdiff1d(a)`.
+        """
         if not isinstance(other, simpy):
             raise TypeError("Passed argument is not an instance of simpy class") 
         
@@ -1519,6 +1549,6 @@ class simpy:
                 res.append(i)
         return res
 
-    
+
 
         
