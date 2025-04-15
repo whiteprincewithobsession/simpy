@@ -143,7 +143,7 @@ class simpy:
         """
         def format_value(value):
             if isinstance(value, float):
-                return f"{value:.1f}"
+                return f"{value:.{self.display_decimals}f}"
             return str(value)
 
         def format_array(data, indent=0):
@@ -513,11 +513,11 @@ class simpy:
         """
         if not isinstance(indices, tuple):
             indices = (indices,)
+    
+        if len(indices) > self.ndim:
+            raise IndexError(f"Too many indices for array with {self.ndim} dimensions")
         
-        if len(indices) > len(self.shape):
-            raise IndexError(f"Too many indices for array with {len(self.shape)} dimensions")
-        
-        def get_item(data: List, idx: Tuple, dim: int = 0) -> List:
+        def get_item(data: List, idx: Tuple, dim: int = 0) -> Union[List, float, int]:
             if not idx:
                 return data
                 
@@ -533,7 +533,7 @@ class simpy:
                 result = data[current_idx]
                 
                 if len(idx) == 1:
-                    return [result] if not isinstance(result, list) else result
+                    return result
                 return get_item(result, idx[1:], dim + 1)
             
             elif isinstance(current_idx, slice):
@@ -549,7 +549,18 @@ class simpy:
         
         try:
             result = get_item(self.data, indices)
-            return simpy(result if isinstance(result[0], list) else [result])
+            
+            # If result is a single element, return it directly
+            if not isinstance(result, list):
+                return result
+                
+            # If result is a list of lists, return as simpy array
+            if isinstance(result[0], list):
+                return simpy(result)
+                
+            # If result is a flat list, return as 1D simpy array
+            return simpy(result)
+            
         except IndexError as e:
             raise IndexError(f"Failed to index array: {str(e)}") from e
         #05.04 FIX error IndexError: Failed to index array: Index 1 is out of bounds for axis 0 with size 1
@@ -557,7 +568,7 @@ class simpy:
     
     @staticmethod
     def arange(start: Union[int, float], stop: Union[int, float], 
-               step: Union[int, float] = 1, dtype: str = None) -> 'simpy':
+               step: Union[int, float] = 1, dtype: Optional[str] = None) -> 'simpy':
         """Create a 1D array with evenly spaced values within a given interval.
         
         Generates values from start (inclusive) to stop (exclusive),
@@ -1593,3 +1604,128 @@ class simpy:
         
         transposed_data = recursive_transpose(self.data)
         return simpy(transposed_data, dtype=self.dtype)
+    
+    def minor(self, row: int, col: int) -> 'simpy':
+        """Return the minor matrix by removing specified row and column.
+        
+        Args:
+            row: Index of row to remove (0-based)
+            col: Index of column to remove (0-based)
+            
+        Returns:
+            simpy: New matrix with specified row and column removed
+            
+        Raises:
+            IndexError: If row or column indices are out of bounds
+        """
+        if row < 0 or row >= self.shape[0]:
+            raise IndexError(f"Row index {row} is out of bounds")
+        if col < 0 or col >= self.shape[1]:
+            raise IndexError(f"Column index {col} is out of bounds")
+        
+        minor_data = []
+        for i in range(self.shape[0]):
+            if i == row:
+                continue
+            minor_row = []
+            for j in range(self.shape[1]):
+                if j == col:
+                    continue
+                minor_row.append(self.data[i][j])
+            minor_data.append(minor_row)
+        
+        return simpy(minor_data, dtype=self.dtype)
+
+    
+    def det(self) -> float:
+        """Compute the determinant of a square matrix.
+        
+        Uses recursive Laplace expansion for matrices larger than 2x2.
+        For 1x1 matrices, returns the single element.
+        For 2x2 matrices, uses the direct formula ad - bc.
+        
+        Returns:
+            The determinant as a float (even for integer matrices)
+            
+        Raises:
+            ValueError: If the matrix is not square or has ndim != 2
+            TypeError: If the matrix contains non-numeric elements
+            
+        Examples:
+            >>> a = simpy([[1, 2], [3, 4]])
+            >>> a.det()
+            -2.0
+            
+            >>> b = simpy([[5]])
+            >>> b.det()
+            5.0
+            
+            >>> c = simpy([[2, 4, 1], [0, 3, -1], [1, 2, 0]])
+            >>> c.det()
+            5.0
+        """
+        if self.ndim != 2:
+            raise ValueError("Determinant is only defined for 2D matrices")
+            
+        if self.shape[0] != self.shape[1]:
+            raise ValueError("Matrix must be square to compute determinant")
+            
+        n = self.shape[0]
+        
+        if n == 1:
+            return float(self.data[0][0])
+            
+        if n == 2:
+            return float(self.data[0][0] * self.data[1][1] - 
+                        self.data[0][1] * self.data[1][0])
+        
+        determinant = 0.0
+        
+        for col in range(n):
+            submatrix = []
+            for i in range(1, n):
+                row = []
+                for j in range(n):
+                    if j != col:
+                        row.append(self.data[i][j])
+                submatrix.append(row)
+                
+            sub_det = simpy(submatrix).det()
+            sign = (-1) ** col
+            determinant += sign * self.data[0][col] * sub_det
+            
+        return determinant
+    
+    def inv(self) -> 'simpy':
+
+        if self.ndim != 2:
+            raise ValueError(f"Can't find inversed matrix with ndim: {self.ndim}")
+
+        if self.shape[0] != self.shape[1]:
+            raise ValueError(f"The number of rows and columns are different:\n Rows: {self.shape[0]}\n Columns: {self.shape[1]}")
+        
+        determinant = self.det()
+
+        if determinant == 0:
+            raise ValueError(f"Zero Determinant")
+        
+        if self.shape[0] == 2:
+            a, b = self[0, 0], self[0, 1]
+            c, d = self[1, 0], self[1, 1]
+            inversed_determinant = 1 / determinant
+            return simpy([[d * inversed_determinant, -b * inversed_determinant],
+                          [-c * inversed_determinant, a * inversed_determinant]], dtype='float')
+
+        cofactors = []
+        for r in range(self.shape[0]):
+            cofactor_row = []
+            for c in range(self.shape[1]):
+                minor = self.minor(r, c)
+                cofactor = ((-1) ** (r + c)) * minor.det()
+                cofactor_row.append(cofactor)
+            cofactors.append(cofactor_row)
+        
+        adjugate = simpy(cofactors).transpose()
+        inverse = adjugate * (1 / determinant)
+        return inverse
+
