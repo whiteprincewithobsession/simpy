@@ -50,11 +50,12 @@ The goal of this project is to understand how numpy works and all its related me
 
 - `min(axis=None)` — Compute the minimum value along a specified axis or globally.
 - `max(axis=None)` — Compute the maximum value along a specified axis or globally.
-- `flatten()` — Flatten the array into a 1D array.
 - `fill(value)` — Fill the array with a scalar value.
 
 ---
+
 ### 📊 Statistical & Mathematical Methods
+
 - `sum()` — Compute the sum of array elements.
 - `prod()` — Compute the product of array elements.
 - `diagonal()` — Extract the diagonal elements of 2D array.
@@ -63,6 +64,25 @@ The goal of this project is to understand how numpy works and all its related me
 - `cov(rowvar=True, ddof=None)` — Compute the covariance matrix.
 - `corrcoef(rowvar=True)` — Compute Pearson correlation coefficients.
 - `median(axis=None)` — Compute the median along the specified axis
+
+---
+
+### 🔢 Linear Algebra Operations
+
+- `det()` - Matrix determinant
+- `inv()` - Matrix inverse
+- `norm()` - Matrix/vector norms (Frobenius, spectral, etc.)
+- Eigenvalue computation (internal `_compute_eigenvalues()`)
+
+---
+
+### 🔍 Indexing and Array Manipulation
+
+- `argmin()/argmax()` - Find indices of minimum/maximum values
+- `setdiff1d()` - Set difference between arrays
+- `transpose()` - Transpose the array
+- `minor()` - Get matrix minor by removing row/column
+- `flatten()` - Return flattened 1D version of array
 
 ---
 
@@ -193,13 +213,29 @@ print(corr)  # Output: correlation matrix
 ```
 ---
 
+### 🔸 Linear Algebra
+
+```python
+# Matrix properties
+mat = simpy([[1, 2], [3, 4]])
+print(mat.det())  # Determinant
+print(mat.inv())  # Inverse matrix
+
+# Vector/matrix norms
+v = simpy([3, 4])
+print(v.norm(2))  # Euclidean norm (5.0)
+print(mat.norm('fro'))  # Frobenius norm
+```
+
+---
+
 ## 🚧 Project Status
 
 The project is still a work in progress. The following features are planned:
 
 - ✅ **Advanced Indexing**: Boolean masks, fancy indexing
 - ✅ **Matrix Operations**: Dot product, transpose, etc.
-- ⚙️ **Different operations with arrays**: diagonal, std, mean, median, etc.
+- ✅ **Different operations with arrays**: diagonal, std, mean, median, etc.
 - ⚠️ **Error Handling**: Better error messages and robustness
 
 ---
