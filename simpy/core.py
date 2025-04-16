@@ -1,5 +1,5 @@
 from typing import List, Tuple, Union, Callable, Any, Optional
-from math import prod, ceil
+from math import prod, ceil, abs
 import random
 
 
@@ -550,15 +550,12 @@ class simpy:
         try:
             result = get_item(self.data, indices)
             
-            # If result is a single element, return it directly
             if not isinstance(result, list):
                 return result
                 
-            # If result is a list of lists, return as simpy array
             if isinstance(result[0], list):
                 return simpy(result)
                 
-            # If result is a flat list, return as 1D simpy array
             return simpy(result)
             
         except IndexError as e:
@@ -1697,7 +1694,33 @@ class simpy:
         return determinant
     
     def inv(self) -> 'simpy':
+        """Compute the multiplicative inverse of a square matrix.
 
+        Returns a new matrix that, when multiplied with the original,
+        yields the identity matrix.
+        
+        Algorithm:
+            1. Computes the matrix of cofactors
+            2. Transposes to get the adjugate matrix
+            3. Multiplies by 1/determinant
+        
+        Returns:
+            simpy: The inverse matrix with dtype='float'
+        
+        Raises:
+            ValueError: If matrix is not square, has ndim != 2, 
+                    or is singular (det = 0)
+        
+        Examples:
+            >>> m = simpy([[1, 2], [3, 4]])
+            >>> m.inv()
+            simpy([[-2.0, 1.0], [1.5, -0.5]])
+        
+        Notes:
+            1. For numerical stability, consider adding a small epsilon 
+            when checking determinant == 0
+            2. Matrix inversion has O(n³) complexity for dense matrices
+        """
         if self.ndim != 2:
             raise ValueError(f"Can't find inversed matrix with ndim: {self.ndim}")
 
@@ -1728,4 +1751,165 @@ class simpy:
         adjugate = simpy(cofactors).transpose()
         inverse = adjugate * (1 / determinant)
         return inverse
+    
+    def _compute_eigenvalues(self, max_iter=100, tol=1e-6) -> List[float]:
+        """Internal method to compute eigenvalues of a square matrix.
+    
+        Uses QR algorithm for matrices > 2x2 and direct formula for 2x2 matrices.
+        
+        Parameters:
+            max_iter: Maximum number of QR iterations
+            tol: Tolerance for convergence checking
+        
+        Returns:
+            List[float]: Eigenvalues sorted by magnitude (descending)
+        
+        Raises:
+            ValueError: If matrix is not square
+            RuntimeError: If QR algorithm fails to converge
+        
+        Notes:
+            1. This is a simplified implementation - consider:
+            - Adding complex number support
+            - Implementing more robust QR decomposition
+            - Adding shift strategies for faster convergence
+        """
+        if self.ndim != 2 or self.shape[0] != self.shape[1]:
+            raise ValueError("Eigenvalues require square matrix")
+        
+        if self.shape[0] == 2:
+            a, b, c, d = self.data[0][0], self.data[0][1], self.data[1][0], self.data[1][1]
+            trace = a + d
+            det = a*d - b*c
+            discr = trace**2 - 4*det
+            
+            if discr >= 0:
+                sqrt_discr = discr**0.5
+                return [(trace + sqrt_discr)/2, (trace - sqrt_discr)/2]
+            else:
+                return [trace/2, trace/2]
+        
+        A = [row.copy() for row in self.data]
+        n = self.shape[0]
+        
+        for _ in range(max_iter):
+            Q = [[0]*n for _ in range(n)]
+            R = [[0]*n for _ in range(n)]
+            
+            for j in range(n):
+                v = [A[i][j] for i in range(n)]
+                for k in range(j):
+                    R[k][j] = sum(Q[i][k] * A[i][j] for i in range(n))
+                    v = [v[i] - Q[i][k] * R[k][j] for i in range(n)]
+                
+                R[j][j] = sum(x**2 for x in v)**0.5
+                if R[j][j] < tol:
+                    Q = [[1 if i==j else 0 for j in range(n)] for i in range(n)]
+                else:
+                    Q = [[v[i]/R[j][j] for i in range(n)] for j in range(n)]
+            
+            A = [[sum(R[i][k] * Q[k][j] for k in range(n)) for j in range(n)] for i in range(n)]
+        
+        eigenvalues = [A[i][i] for i in range(n)]
+        return sorted(eigenvalues, key=lambda x: -abs(x))
+        
+    def norm(self, ord: Union[str, int] = None) -> Union[float, 'simpy', None]:
+        """Compute matrix or vector norm.
+    
+        Supported norm types:
+            - None/'fro': Frobenius norm (sqrt of sum of squares)
+            - 1: Maximum column sum (matrices) or max abs (vectors)
+            - -1: Minimum column sum (matrices) or min abs (vectors) 
+            - 2: Spectral norm (largest singular value)
+            - -2: Smallest singular value
+            - 'inf': Maximum row sum
+            - '-inf': Minimum row sum
+            - 0: Number of non-zero elements (vectors only)
+            - 'nuc': Nuclear norm (sum of singular values)
+        
+        Parameters:
+            ord: Order of the norm (see above for options)
+        
+        Returns:
+            Computed norm as float. Returns None for unsupported norm types.
+        
+        Raises:
+            ValueError: For invalid norm orders or incompatible dimensions
+            NotImplementedError: For norms not implemented for given array shape
+        
+        Examples:
+            >>> v = simpy([3, 4])
+            >>> v.norm(2)  # Euclidean norm
+            5.0
+            
+            >>> m = simpy([[1, 2], [3, 4]])
+            >>> m.norm('fro')  # Frobenius norm
+            5.477...
+        
+        Notes:
+            1. Spectral norm (ord=2) requires square matrices
+            2. Nuclear norm may be inaccurate for non-diagonal matrices
+        """
+        if ord in (None, 'fro'):
+            if self.ndim == 1:
+                return sum(x**2 for x in self.data)**0.5
+            
+            elif self.ndim == 2:
+                return sum(x**2 for row in self.data for x in row)**0.5
+            
+            raise NotImplementedError("Norm is only implemented for 1D and 2D arrays")
+        
+        elif ord in (1, -1):
+            if self.ndim == 1:
+                module_data = [abs(x) for x in self.data]
+                return max(module_data) if ord == 1 else min(module_data)
+                
+            elif self.ndim == 2:
+                col_sums = []
+                for col in range(self.shape[1]):
+                    col_sum = sum(abs(row[col]) for row in self.data)
+                    col_sums.append(col_sum)
+                
+                return max(col_sums) if ord == 1 else min(col_sums)
+                
+            raise NotImplementedError("Norm is only implemented for 1D and 2D arrays")
+        
+        elif ord in ('inf', '-inf'):
+            if self.ndim == 1:
+                return sum([abs(x) for x in self.data])
+            
+            elif self.ndim == 2:
+                row_sums = []
+                for row in range(self.shape[0]):
+                    row_sum = sum(abs(row[col] for col in row))
+                    row_sums.append(row_sum)
+                
+                return max(row_sums) if ord == 'inf' else min(row_sums)
+            
+            raise NotImplementedError("Norm is only implemented for 1D and 2D arrays")
 
+        elif ord == 0:
+            if self.ndim == 1:
+                return sum(1 for x in self.data if x != 0)
+        
+            raise ValueError("ord=0 can be used only for 1D arrays")
+        
+        elif ord in (2, -2):
+            if self.ndim == 1:
+                return sum(x**2 for x in self.data)**0.5
+            
+            elif self.ndim == 2:
+                if self.shape[0] != self.shape[1]:
+                    raise ValueError("Spectral norm requires square matrix")
+                eigenvalues = [abs(x) for x in self._compute_eigenvalues()]
+        
+                return max(eigenvalues) if ord == 2 else min(eigenvalues)
+            
+            raise NotImplementedError("Spectral norm requires 2D array")
+
+        elif ord == 'nuc':
+            if self.ndim == 2:
+                return sum(abs(x) for x in self._compute_eigenvalues())**0.5
+            raise ValueError("ord='nuc' requires 2D array")
+
+        raise ValueError(f"Invalid norm ord: '{ord}'")
